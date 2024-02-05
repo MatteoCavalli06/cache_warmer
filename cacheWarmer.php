@@ -29,7 +29,7 @@ class cacheWarmerClass
                 }
             }
 
-            if(!$excludeLink){
+            if(!$excludeLink && strpos($link, '?')=== false){
                 $filteredLinks[]= $link;
             }
         }
@@ -108,49 +108,64 @@ class cacheWarmerClass
 
     public function visitUrl($url,$level) //Metodo che "visita" il contenuto di un url.
     {
-        if($level > $this->maxLevel)
-        {
+        //echo "$level\n";
+        if ($level > $this->maxLevel) {
             return;
-        } 
-            
-        $this->log("Visito url: $url ..."); // Inserisce gli URL visitati nel .log
+        }
+
+        $startTime = microtime(true);
 
         $html=@file_get_contents($url);
+
+        $endTime = microtime(true);
+        $executionTime = round($endTime - $startTime, 4);
+        $this->log("Visito url: $url ...", $executionTime,$value=1);
 
         $this->visitCount++;
         
         //Richiamo dei metodi.
-        $links=$this->linksExtractor($html);
+        $links = $this->linksExtractor($html);
+        $links = $this->linksCleaner($links, $url);
+        $links = array_diff($links, $this->allLinks);
+        $this->allLinks = array_merge($links, $this->allLinks);
     
-        $links=$this->linksCleaner($links,$url);
-        
-        $links=array_diff($links,$this->allLinks);
-    
-        $this->allLinks=array_merge($links,$this->allLinks);
-
         sleep($this->sleep);
-        
-        foreach ($links as $link)
-        {
-            $this->visitUrl($link,$level+1);
-        }
+    
+        foreach ($links as $link) {
+                $this->visitUrl($link, $level + 1);
+            }
     }
 
     public function execute() //Metodo che avvia il metodo visitUrl
     {
         $this->visitUrl($this->baseUrl,1);
-        $this->log( "Ho visitato ".$this->visitCount." links");
+        $this->log( "Ho visitato ".$this->visitCount." links",null,$value=0);
     }
 
-    private function log($msg)
-    { 
-        file_put_contents("chachwarmer.log",date('Y-m-d\TH:i:sP')." ".$msg."\n",FILE_APPEND);
+    private function log($msg, $executionTime, $value)
+{ 
+    $logName = pathinfo(__FILE__, PATHINFO_FILENAME) . '.log';
+
+    if($value == 1){
+        
+        $log_entry = date('Y-m-d\TH:i:sP') ;
+
+        if ($executionTime !== null) {
+            $log_entry .= " Tempo di esecuzione: $executionTime secondi ". "  $msg";
+        }
+    
+        
+        file_put_contents($logName, $log_entry . "\n", FILE_APPEND);
+        echo "$msg\n";
+    }else{
+        file_put_contents($logName,date('Y-m-d\TH:i:sP')." ".$msg."\n",FILE_APPEND);
         echo "$msg\n";
     }
+   
+}
 
 }
 
-//$url = $argv[1]; //Inserimento dalla riga di comando
 $opts=getopt('',['url:','level:','exclude:','help','sleep:']);
 
 $url=$opts['url'] ?? null;

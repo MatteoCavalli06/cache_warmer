@@ -28,8 +28,8 @@ class cacheWarmerClass
                     break;
                 }
             }
-
-            if(!$excludeLink && strpos($link, '?')=== false){
+            
+            if(!$excludeLink){
                 $filteredLinks[]= $link;
             }
         }
@@ -41,11 +41,24 @@ class cacheWarmerClass
     {
         $filteredLinks = [];
         foreach($links as $link){
-            if(strpos($link, '/#') === false){
+            if(strpos($link, '#') === false){
                 $filteredLinks[]=$link;
             }
         }
         return  $filteredLinks;
+    }
+
+    public function removeTopic($links)
+    {
+        $filteredLinks = [];
+        foreach($links as $link){
+            if(strpos($link,'?') === false){
+                $filteredLinks[]=$link;
+            }else{
+                $filteredLinks[]=strstr($link,'?',true);
+            }
+        }
+        return $filteredLinks;
     }
 
     public function relativeToAbsolute($current,$url)
@@ -74,7 +87,7 @@ class cacheWarmerClass
     public function linksExtractor($html) //Metodo che estrae i link tramite un'espressione regolare.
     {
         $links=[];
-        if (preg_match_all('/<a\s+.*?href=[\"\']?([^\"\' >]*)[\"\']?[^>]*>(.*?)<\/a>/i',$html,$m))
+        if (preg_match_all('/<a\s+[^>]*href\s*=\s*["\']([^"\']+)["\']/i',$html,$m))
         {
             $links=$m[1];
         }
@@ -83,25 +96,29 @@ class cacheWarmerClass
 
     public function linksCleaner($links,$currentUrl) //Metodo che pulisce i link rimuovendo eventuali '/' finali e richiamando la funzione relativeToAbsolute.
     {
-        foreach ($links as $k=>&$link)
-        {
-            $link=rtrim(trim($link),"/");
-            $link=$this->relativeToAbsolute($currentUrl,$link);
-            if(str_starts_with($link,"/")){
-                $link=$this->baseUrl.$link;
+        foreach ($links as $k => &$link) {
+            $link = rtrim(trim($link), "/");
+            $link = $this->relativeToAbsolute($currentUrl, $link);
+            if (str_starts_with($link, "/")) {
+                $link = $this->baseUrl . $link;
             }
-            if($link == $this->baseUrl){
+            if ($link == $this->baseUrl) {
                 unset($links[$k]);
-            }
-            elseif(str_starts_with($link,$this->baseUrl)){
-                continue;   
-            }
-            else{
+            } elseif (str_starts_with($link, $this->baseUrl)) {
+                continue;
+            } elseif (in_array($link, $links)) {
+                continue;
+            } else {
                 unset($links[$k]);
             }
         }
+        
         $links=$this->excludeLinks($links);
         $links=$this->excludeHash($links);
+        $links=$this->removeTopic($links);
+        
+        //strstr($link,'?',true);
+        //$url=parse_url($url, PHP_URL_SCHEME).'://'.parse_url($url, PHP_URL_HOST).parse_url($url, PHP_URL_PATH); 
         $links = array_unique($links); //evito che un link venga visitato 2 volte
         return $links;
     }
@@ -128,7 +145,7 @@ class cacheWarmerClass
         $links = $this->linksCleaner($links, $url);
         $links = array_diff($links, $this->allLinks);
         $this->allLinks = array_merge($links, $this->allLinks);
-    
+
         sleep($this->sleep);
     
         foreach ($links as $link) {

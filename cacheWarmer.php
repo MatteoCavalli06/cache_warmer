@@ -37,6 +37,20 @@ class cacheWarmerClass
         return $filteredLinks; 
     }
 
+    public function differentScheme($links)
+    {
+        $filteredLinks = [];
+
+        foreach($links as $link){
+            $parseLink=parse_url($link);
+            if (isset($parseLink['scheme']) && in_array($parseLink['scheme'], ['http', 'https'])){
+                $filteredLinks[]=$link;
+            } 
+        }
+        return $filteredLinks;
+
+    }
+
     public function excludeHash($links)
     {
         $filteredLinks = [];
@@ -115,6 +129,7 @@ class cacheWarmerClass
         
         $links=$this->excludeLinks($links);
         $links=$this->excludeHash($links);
+        $links=$this->differentScheme($links);
         $links=$this->removeTopic($links);
         
         //strstr($link,'?',true);
@@ -160,10 +175,10 @@ class cacheWarmerClass
     }
 
     private function log($msg, $executionTime, $value)
-{ 
+    { 
     $logName = pathinfo(__FILE__, PATHINFO_FILENAME) . '.log';
 
-    if($value == 1){
+        if($value == 1){
         
         $log_entry = date('Y-m-d\TH:i:sP') ;
 
@@ -174,36 +189,37 @@ class cacheWarmerClass
         
         file_put_contents($logName, $log_entry . "\n", FILE_APPEND);
         echo "$msg\n";
-    }else{
+        }else{
         file_put_contents($logName,date('Y-m-d\TH:i:sP')." ".$msg."\n",FILE_APPEND);
         echo "$msg\n";
-    }
+        }
    
-}
+    }
 
 }
 
-$opts=getopt('',['url:','level:','exclude:','help','sleep:']);
+    $opts=getopt('',['url:','level:','exclude:','help','sleep:']);
 
-$url=$opts['url'] ?? null;
-$maxLevel=$opts['level'] ?? 2;
-$help=isset($opts['help']);
-$sleep=$opts['sleep'] ?? 0;
-$exclude = $opts['exclude'] ?? null;
-$excludes=[];
-if (is_array($exclude)) {
-    $excludes = $exclude;
-} elseif(is_string($exclude)) {
-    $excludes = [$exclude];
-}
-if ($help || !$url) {
-    echo "Sintassi Errata \n";
-    exit; 
-}
+    $url=$opts['url'] ?? null;
+    $maxLevel=$opts['level'] ?? 2;
+    $help=isset($opts['help']);
+    $sleep=$opts['sleep'] ?? 0;
+    $exclude = $opts['exclude'] ?? null;
+    $excludes=[];
 
-echo "Visiting: $url \nExcludes: ".implode(', ',$excludes)." \nLevel: $maxLevel \nSleep: $sleep\n";
-$visitor = new cacheWarmerClass($url,$maxLevel,$excludes,$sleep);
-$visitor->execute();
+    if (is_array($exclude)) {
+        $excludes = $exclude;
+    } elseif(is_string($exclude)) {
+        $excludes = [$exclude];
+    }
+    if ($help || !$url) {
+        echo "Sintassi Errata \n";
+        exit; 
+    }
+
+    echo "Visiting: $url \nExcludes: ".implode(', ',$excludes)." \nLevel: $maxLevel \nSleep: $sleep\n";
+    $visitor = new cacheWarmerClass($url,$maxLevel,$excludes,$sleep);
+    $visitor->execute();
 
 
 ?>

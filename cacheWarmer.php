@@ -213,7 +213,7 @@ class cacheWarmerClass
         $excludes = [$exclude];
     }
     if ($help || !$url) {
-        echo "Sintassi Errata \n";
+        echo "Inserire dalla riga di comando un url da visitare con la seguente sintassi--> --url ... Facoltativo l'inserimento di un livello, una pausa tra una visita e l altra e una tpologia di link da escludere, sempre con la stessa sintassi--> --level ... --exclude ... --sleep  ... \n";
         exit; 
     }
 
